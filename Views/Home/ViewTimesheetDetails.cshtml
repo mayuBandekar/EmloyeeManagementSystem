@@ -1,0 +1,119 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+
+@{
+    
+}
+
+<div>
+    <h2>Item ID: @ViewBag.itemId</h2>
+</div>
+<div id="dataContainer" class="mt-4">
+    <div class="col-md-12 d-flex">
+        <div class="col-md-10">
+            <table class="table" id="tasksTable">
+                <thead>
+                    <tr>
+                        <th scope="col">TaskName</th>
+                        <th scope="col">Hours</th>
+                       
+                    </tr>
+
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="col-md-12 d-flex mt-3">
+        <div class="col-md-10">
+            <table class="table" id="breaksTable">
+                <thead>
+                    <tr>
+                        <th scope="col">BreakStart</th>
+                        <th scope="col">BreakEnd</th>
+                        <th scope="col">Reason</th>
+                       
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</div>
+
+
+@section scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            fetch('/Home/GetEmployeeTimesheetDetails?TimesheetId=' + @ViewBag.itemId)
+                .then(response => response.json())
+                .then(data => {
+                    if (data?.$values[0]?.Tasks?.$values?.length === 0) {
+                        displayError('No tasks available for the selected date.');
+                    } else {
+                        populateTasksTable(data?.$values[0]?.Tasks.$values);
+                    }
+
+                    if (data?.$values[0]?.Breaks?.$values?.length === 0) {
+                        displayError('No breaks available for the selected date.');
+                    } else {
+                        populateBreaksTable(data?.$values[0]?.Breaks.$values);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                });
+        });
+
+
+        function populateTasksTable(tasks) {
+            console.log(tasks)
+            var tasksTableBody = document.getElementById('tasksTable').getElementsByTagName('tbody')[0];
+            tasksTableBody.innerHTML = '';
+            tasks.forEach(function (task) {
+                var row = tasksTableBody.insertRow();
+                var cell1 = row.insertCell(0);
+                var cell2 = row.insertCell(1);
+
+                cell1.textContent = task.TaskName;
+                cell2.textContent = task.Hours;
+            });
+        }
+
+        function displayError(message) {
+            var errorContainer = document.createElement("div");
+            errorContainer.textContent = message;
+            errorContainer.classList.add("text-danger");
+            document.getElementById("dataContainer").appendChild(errorContainer);
+        }
+
+        function removeError() {
+            var errorContainer = document.getElementById('errorContainer');
+            if (errorContainer) {
+                errorContainer.parentNode.removeChild(errorContainer);
+            }
+        }
+
+        function populateBreaksTable(breaks) {
+            console.log(breaks)
+            var breaksTableBody = document.getElementById('breaksTable').getElementsByTagName('tbody')[0];
+            breaksTableBody.innerHTML = '';
+            breaks.forEach(function (breakItem) {
+                var row = breaksTableBody.insertRow();
+                var cell1 = row.insertCell(0);
+                var cell2 = row.insertCell(1);
+                var cell3 = row.insertCell(2);
+
+                cell1.textContent = breakItem.BreakStart;
+                cell2.textContent = breakItem.BreakEnd;
+                cell3.textContent = breakItem.Reason;
+
+            });
+        }
+
+    </script>
+}

@@ -1,0 +1,403 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@{
+    ViewBag.Title = "Calculations";
+}
+
+
+<div class="text-center">
+
+<h3 class="display-4">Calculations for each employee</h3>
+<Button class="btn btn-outline-info d-flex justify-content-lg-start my-3" id="HomePage">Go to home Page</Button>
+    <div class="container-fluid">
+        <div class="row justify-content-center">
+            <div class="col-md-12">
+                <div>
+                    <button class="btn btn-primary" onclick="switchContainer()">Weekly Calculation</button>
+                    <button class="btn btn-primary" onclick="switchContainer()">Monthly Calculation</button>
+                </div>
+                <div class="container1 my-3" style="display: none;">
+                    <h2>Weekly Calculation</h2>
+                    <div class="col-md-12 col-lg-12 d-flex mx-3">
+                        <div class="col-md-2 col-lg-2">
+                            <label class="" for="date">select Employee</label>
+                            <select id="mySelect" class="form-control" onchange="myFunction()" onclick="handleSelect()">
+                                <option value="" selected disabled>select employee</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 col-lg-6 d-flex flex-row mx-2">
+                            <div class="col-md-5 mx-1">
+                                <label class="" for="date">start date</label>
+                                <input type="text" class="form-control" id="datepicker1" placeholder="Select Date" onclick="handleSelect()" style="margin-bottom: 10px;">
+                            </div>
+                            <div class="col-md-5 mx-1">
+                                <label class="" for="date">end date</label>
+                                <input type="text" class="form-control" id="datepicker2" placeholder="Select Date" onclick="handleSelect()" style="margin-bottom: 10px;">
+                            </div>
+                            <div class="col-md-2 mx-1">
+                                <button id="submit" class="btn btn-primary my-3 mx-3">Calculate</button>
+
+                            </div>
+                            <div class="col-md-1 mx-1">
+                                <button id="cancel" class="btn btn-danger my-3" onclick="resetSelect1()">clear</button>
+
+                            </div>
+                        </div>
+                    </div>
+                   
+                </div>
+
+                <div class="container2 my-3" style="display: none;">
+                    <h2>Monthly calculation</h2>
+                    <div class="d-flex justify-content-lg-center flex-row">
+                        <div class="col-md-2 col-lg-2">
+                            <label class="" for="date">select Employee</label><span className="required" style="color: red">*</span>
+                            <select id="mySelect2" class="form-control" onclick="handleSelect()">
+                                <option value="" selected disabled>select employee</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 col-lg-2 mx-2 d-flex justify-content-center flex-column">
+                            <label class="" for="date">select month</label>
+                            <select id="monthSelect" class="form-control" onchange="handleMonth()" onclick="handleSelect()">
+                                <option value="" disabled>select month</option>
+                                @foreach (var month in ViewBag.Months)
+                                {
+                                    <option value="@month.Value">@month.Text</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-2 col-lg-2 mx-1">
+                            <label class="" for="date">select year</label>
+                            <select id="yearSelect" class="form-control" onclick="handleSelect()" onclick="handleSelect()">
+                                <option value="" selected disabled>select year</option>
+                                @foreach (var year in ViewBag.Years)
+                                {
+                                    <option value="@year.Value">@year.Text</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-2 mx-1">
+                            <button id="submit2" class="btn btn-primary my-3">Calculate</button>
+                        </div>
+                        <div class="col-md-1">
+                            <button id="cancel" class="btn btn-danger my-3" onclick="resetSelect2()">clear</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="errorContainer"></div>
+    <div class="weeklyContainer"></div>
+</div>
+
+
+
+@section scripts {
+
+    <script>
+       
+        document.addEventListener("DOMContentLoaded", function () {
+            fetch('/Home/GetEmployee')
+                .then(response => response.json())
+                .then(data => {
+                    const selectElement1 = document.getElementById("mySelect");
+                    const selectElement2 = document.getElementById("mySelect2");
+
+                    data.forEach(item => {
+                        const option1 = document.createElement("option");
+                        option1.value = item.userId;
+                        option1.textContent = item.firstName + " " + item.lastName;
+                        selectElement1.appendChild(option1);
+
+                        const option2 = document.createElement("option");
+                        option2.value = item.userId;
+                        option2.textContent = item.firstName + " " + item.lastName;
+                        selectElement2.appendChild(option2);
+
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                });
+        });
+
+         function handleSelect(){
+            removeError()
+        }
+
+        document.getElementById("submit").addEventListener("click", function () {
+            calculate();
+        });
+
+        function calculate() {
+            var selectElement = document.getElementById("mySelect");
+            var selectedUserId = selectElement.value;
+
+            const date1Input = document.getElementById('datepicker1').value ? document.getElementById('datepicker1').value : null;
+            const date2Input = document.getElementById('datepicker2').value ? document.getElementById('datepicker2').value : null;
+
+            if (selectedUserId == "") {
+                removeError();
+                showError("Please select employee");
+            } else if (date1Input == null || date2Input == null) {
+                removeError();
+                showError("Please select a both dates.");
+            } else {
+                removeError();
+                GetCalulatedWorkingHours();
+            }
+        }
+
+        function GetCalulatedWorkingHours() {
+            var selectElement = document.getElementById("mySelect");
+            var selectedUserId = selectElement.value;
+
+            const date1Input = document.getElementById('datepicker1').value ? document.getElementById('datepicker1').value : null;
+            const date2Input = document.getElementById('datepicker2').value ? document.getElementById('datepicker2').value : null;
+
+            const date1 = formatDate(date1Input);
+            const date2 = formatDate(date2Input);
+
+            var payload = {
+                userId: selectedUserId,
+                startDate: date1,
+                endDate: date2,
+                month: 0,
+                year: 0
+            };
+            fetch('/Home/GetCalulatedWorkingHours', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message) {
+                        var weeklyContainer = document.querySelector(".weeklyContainer");
+                        weeklyContainer.innerHTML = '';
+                        var msgContainer = document.createElement("div");
+                        msgContainer.textContent = "data not found";
+                        weeklyContainer.appendChild(msgContainer);
+                        return;
+                    }
+                    var weeklyContainer = document.querySelector(".weeklyContainer");
+                    weeklyContainer.innerHTML = '';
+                    let hrs = data.WeeklyWorkingHrs;
+                    var msgContainer = document.createElement("div");
+                    msgContainer.textContent = "Weekly Working Hours: " + hrs;
+                    weeklyContainer.appendChild(msgContainer);
+
+                    var selectElementDay = document.getElementById("mySelect");
+                    selectElementDay.value = "";
+
+                    var selectElementDay = document.getElementById("datepicker1");
+                    selectElementDay.value = "";
+
+                    var selectElementDay = document.getElementById("datepicker2");
+                    selectElementDay.value = "";
+
+                })
+                .catch(error => console.error('Error fetching options:', error));
+        }
+
+        document.getElementById("submit2").addEventListener("click", function () {
+            calculate2();
+        }); 
+
+        function calculate2() {
+            var selectElement = document.getElementById("mySelect2");
+            var selectedUserId = selectElement.value;
+
+            const month = document.getElementById('monthSelect').value ? document.getElementById('monthSelect').value : null;
+            const year = document.getElementById('yearSelect').value ? document.getElementById('yearSelect').value : null;
+
+            var parsedMonth = month ? parseInt(month) : 0;
+            var parsedYear = year ? parseInt(year) : 0;
+
+            if (selectedUserId == "") {
+                removeError();
+                showError("Please select employee");
+            } else if (month == null || year == null) {
+                removeError();
+                showError("Please select a both month and year.");
+            } else {
+                removeError();
+                GetCalulatedWorkingHours1();
+            }
+        }
+
+        function GetCalulatedWorkingHours1() {
+
+            var selectElement = document.getElementById("mySelect2");
+            var selectedUserId = selectElement.value;
+
+            const month = document.getElementById('monthSelect').value ? document.getElementById('monthSelect').value : null;
+            const year = document.getElementById('yearSelect').value ? document.getElementById('yearSelect').value : null;
+
+            var parsedMonth = month ? parseInt(month) : 0;
+            var parsedYear = year ? parseInt(year) : 0;
+
+
+            var payload = {
+                userId: selectedUserId,
+                startDate: null,
+                endDate: null,
+                month: parsedMonth,
+                year: parsedYear
+            };
+            fetch('/Home/GetCalulatedWorkingHours', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message) {
+                        var weeklyContainer = document.querySelector(".weeklyContainer");
+                        weeklyContainer.innerHTML = '';
+                        var msgContainer = document.createElement("div");
+                        msgContainer.textContent = "data not found";
+                        weeklyContainer.appendChild(msgContainer);
+                        return;
+                    }
+                    var weeklyContainer = document.querySelector(".weeklyContainer");
+                    weeklyContainer.innerHTML = '';
+                    let hrs = data.MonthlyWorkingHrs;
+                    var msgContainer = document.createElement("div");
+                    msgContainer.textContent = "Monthly Working Hours: " + hrs;
+                    weeklyContainer.appendChild(msgContainer);
+
+                    var selectElementDay = document.getElementById("mySelect2");
+                    selectElementDay.value = "";
+
+                    var selectElementDay = document.getElementById("monthSelect");
+                    selectElementDay.value = "";
+
+                    var selectElementDay = document.getElementById("yearSelect");
+                    selectElementDay.value = "";
+
+                    
+                })
+                .catch(error => console.error('Error fetching options:', error));
+        }
+
+        function showError(message) {
+            var errorElement = document.getElementById('errorMessage');
+            if (!errorElement) {
+                errorElement = document.createElement('div');
+                errorElement.id = 'errorMessage';
+                errorElement.classList.add('alert', 'alert-danger');
+                errorElement.textContent = message;
+                document.getElementById('errorContainer').appendChild(errorElement);
+            } else {
+                errorElement.textContent = message;
+            }
+        }
+
+        function removeError() {
+            var errorElement = document.getElementById('errorMessage');
+            if (errorElement) {
+                errorElement.parentNode.removeChild(errorElement);
+            }
+        }
+
+        const formatDate = (inputDate) => {
+            if (!inputDate) return null;
+            const dateObj = new Date(inputDate);
+            const year = dateObj.getFullYear();
+            const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+            const day = dateObj.getDate().toString().padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
+        $(document).ready(function () {
+            $('#HomePage').click(function () {
+                window.location.href = '@Url.Action("Index", "Home")';
+            });
+
+            $("#datepicker1").datepicker({
+                onSelect: function (selectedDate) {
+                    $("#datepicker2").datepicker("option", "minDate", selectedDate);
+                }
+            });
+            $("#datepicker2").datepicker();
+        });
+
+        function switchContainer() {
+            var container1 = document.querySelector('.container1');
+            var container2 = document.querySelector('.container2');
+
+            resetSelect()
+            if (container1.style.display === "none") {
+                container1.style.display = "block";
+                container2.style.display = "none";
+            } else {
+                container1.style.display = "none";
+                container2.style.display = "block";
+            }
+
+        }
+
+        function resetSelect() {
+            var selectElementDay = document.getElementById("datepicker1");
+            selectElementDay.value = "";
+
+            var selectElementDay = document.getElementById("datepicker2");
+            selectElementDay.value = "";
+
+            var selectElementDay = document.getElementById("monthSelect");
+            selectElementDay.value = "";
+
+            var selectElementDay = document.getElementById("yearSelect");
+            selectElementDay.value = "";
+
+            var weeklyContainer = document.querySelector(".weeklyContainer");
+            weeklyContainer.innerHTML = '';
+        }
+
+        function resetSelect1() {
+            var selectElementDay = document.getElementById("mySelect");
+            selectElementDay.value = "";
+
+            var selectElementDay = document.getElementById("datepicker1");
+            selectElementDay.value = "";
+
+            var selectElementDay = document.getElementById("datepicker2");
+            selectElementDay.value = "";
+
+            var weeklyContainer = document.querySelector(".weeklyContainer");
+            weeklyContainer.innerHTML = '';
+
+            removeError()
+        }
+
+         function resetSelect2() {
+            var selectElementDay = document.getElementById("mySelect2");
+            selectElementDay.value = "";
+
+            var selectElementDay = document.getElementById("monthSelect");
+            selectElementDay.value = "";
+
+            var selectElementDay = document.getElementById("yearSelect");
+            selectElementDay.value = "";
+
+            var weeklyContainer = document.querySelector(".weeklyContainer");
+            weeklyContainer.innerHTML = '';
+
+            removeError()
+        }
+
+    </script>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+}

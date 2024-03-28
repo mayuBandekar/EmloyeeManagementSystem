@@ -1,0 +1,219 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome Admin</h1>
+    <Button id="calculationPage" class="btn btn-outline-info d-flex justify-content-lg-start my-3">Go to Calculation Page</Button>
+    <div class="col-md-12 col-lg-12 d-flex">
+        <div class="col-md-2 col-lg-2">
+            <div class="d-flex justify-content-center">
+                <label class="" for="date">select Employee</label><span className="required" style="color: red">*</span>
+            </div>
+            <select id="mySelect" required class="form-control" onclick="handleSelect()">
+                <option value="" selected disabled>select employee</option>
+            </select>
+        </div>
+        <div class="col-md-2 col-lg-2 mx-1">
+            <label class="" for="date">select date</label>
+            <select id="daySelect" class="form-control" onclick="handleSelect()">
+                <option value="" selected disabled>select date</option>
+                @foreach (var day in ViewBag.Days)
+                {
+                    <option value="@day.Value">@day.Text</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2 col-lg-2 mx-1">
+            <label class="" for="date">select month</label>
+            <select id="monthSelect" class="form-control" onclick="handleSelect()">
+                <option value="" selected disabled>select month</option>
+                @foreach (var month in ViewBag.Months)
+                {
+                    <option value="@month.Value">@month.Text</option>
+                }
+            </select>
+        </div>
+       <div class="col-md-2 col-lg-2 mx-1">
+            <label class="" for="date">select year</label>
+            <select id="yearSelect" class="form-control" onclick="handleSelect()">
+                <option value="" selected disabled>select year</option>
+                @foreach (var year in ViewBag.Years)
+                {
+                    <option value="@year.Value">@year.Text</option>
+                }
+            </select>
+       </div>
+        <div>
+            <button id="submit" class="btn btn-primary my-3 mx-3">Show</button>
+            <button id="cancel" class="btn btn-danger my-3" onclick="resetSelect()">Cancel</button>
+        </div>
+    </div>
+    <div id="errorContainer"></div>
+    <div>
+        <table class="table" id="employeeTable">
+            <thead> 
+                <tr>
+                    <th scope="col">Timesheet Date</th>
+                    <th scope="col">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+   
+</div>
+
+@section scripts {
+
+    <script>
+
+        $(document).ready(function () {
+            $('#calculationPage').click(function () {
+                window.location.href = '@Url.Action("Calculations", "Home")';
+            });
+        });
+
+        function handleSelect(){
+            removeError()
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            fetch('/Home/GetEmployee')
+                .then(response => response.json())
+                .then(data => {
+                    const selectElement = document.getElementById("mySelect");
+                    data.forEach(item => {
+                        const option = document.createElement("option");
+                        option.value = item.userId;
+                        option.textContent = item.firstName + " " + item.lastName;
+                        selectElement.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                });
+        });
+
+        function resetSelect() {
+            var selectElementDay = document.getElementById("daySelect");
+            selectElementDay.value = "";
+
+            var selectElementDay = document.getElementById("monthSelect");
+            selectElementDay.value = "";
+
+            var selectElementDay = document.getElementById("yearSelect");
+            selectElementDay.value = "";
+
+            removeError()
+        }
+
+        document.getElementById("submit").addEventListener("click", function () {
+            getTimesheetInfo()
+        });
+
+        function getTimesheetInfo() {
+            var selectElement = document.getElementById("mySelect");
+            var selectedUserId = selectElement.value;
+            console.log(selectedUserId)
+            const day = document.getElementById('daySelect').value;
+            const year = document.getElementById('yearSelect').value;
+            const month = document.getElementById('monthSelect').value;
+
+            if (selectedUserId == "" && day == "" && year == "" && month == "") {
+                removeError();
+                showError("Please select a Employee and date.");
+            } else if (day == "" && year == "" && month == ""){
+                removeError();
+                showError("Please select a date.");
+            } else if (selectedUserId == "") {
+                removeError();
+                showError("Please select a Employee.");
+            } else {
+                removeError();
+                GetUserTimesheetInfo();
+            }
+        }
+
+        function GetUserTimesheetInfo(){
+            var selectElement = document.getElementById("mySelect");
+            var selectedUserId = selectElement.value;
+            const day = document.getElementById('daySelect').value;
+            const year = document.getElementById('yearSelect').value;
+            const month = document.getElementById('monthSelect').value;
+
+            var parsedDay = day ? parseInt(day) : 0;
+            var parsedMonth = month ? parseInt(month) : 0;
+            var parsedYear = year ? parseInt(year) : 0;
+
+            var payload = {
+                userId: selectedUserId,
+                day: parsedDay,
+                month: parsedMonth,
+                year: parsedYear
+            };
+
+            fetch('/Home/GetUserTimesheetInfo', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    var tableBody = document.getElementById("employeeTable").getElementsByTagName("tbody")[0]; data.$values.forEach(function (item) {
+                        var row = tableBody.insertRow();
+                        var cell1 = row.insertCell(0);
+                        var cell2 = row.insertCell(1);
+
+                        cell1.textContent = formatDate(item.TimesheetDate);
+                        cell2.innerHTML = '<button class="btn btn-primary btn-sm view-details" data-id="' + item.Id + '">View Details</button>';
+                    });
+                })
+                .catch(error => console.error('Error fetching options:', error));
+
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            document.getElementById('employeeTable').addEventListener('click', function (event) {
+                if (event.target.classList.contains('view-details')) {
+                    var itemId = event.target.getAttribute('data-id');
+                    window.location.href = '@Url.Action("ViewTimesheetDetails", "Home")' + '?itemId=' + itemId;
+                }
+            });
+        });
+
+        function formatDate(dateString) {
+            var date = new Date(dateString);
+            var day = date.getDate();
+            var month = date.toLocaleString('default', { month: 'short' });
+            var year = date.getFullYear();
+            return month + ' ' + day + ' ' + year;
+        }
+
+        function showError(message) {
+            var errorElement = document.getElementById('errorMessage');
+            if (!errorElement) {
+                errorElement = document.createElement('div');
+                errorElement.id = 'errorMessage';
+                errorElement.classList.add('alert', 'alert-danger');
+                errorElement.textContent = message;
+                document.getElementById('errorContainer').appendChild(errorElement);
+            } else {
+                errorElement.textContent = message;
+            }
+        }
+
+        function removeError() {
+            var errorElement = document.getElementById('errorMessage');
+            if (errorElement) {
+                errorElement.parentNode.removeChild(errorElement);
+            }
+        }
+
+     
+
+    </script>
+}
